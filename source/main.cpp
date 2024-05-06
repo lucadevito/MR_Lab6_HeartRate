@@ -1,158 +1,173 @@
-/* mbed Microcontroller Library
- * Copyright (c) 2006-2015 ARM Limited
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/*----------------------------------------------------------------------------
+LAB EXERCISE - BLE device
+ ----------------------------------------
+	In this exercise we will create a simple BLE device providing simulated heart rate measurements.
+    We will use the Nucleo BLE shield (X-NUCLEO-IDB05A1).
+    The system will be detectable from a cell phone and will allow to activate notifications for
+    receiving the heart rate measurements.
+    We can connect using the nRFConnect App from the smartphone.
+
+
+	GOOD LUCK!
+ *----------------------------------------------------------------------------*/
 
 #include <events/mbed_events.h>
 #include <mbed.h>
 #include "ble/BLE.h"
 #include "ble/gap/Gap.h"
 #include "ble/services/HeartRateService.h"
+#include "ble/services/BatteryService.h"
+#include "ble/services/DeviceInformationService.h"
 #include "pretty_printer.h"
 
+/** VARIABLE DEFINITIONS **/
+
+/* device name */
 const static char DEVICE_NAME[] = "Heartrate";
 
+/* list of services */
+UUID uuid_list[] = {
+    /* Add service UUIDS:
+        - Heart rate,
+        - Battery,
+        - Device Information */
+    /* COMPLETE HERE */
+        
+    /****************/
+    };
+
+/* Advertising data buffer */
+uint8_t adv_buffer[ble::LEGACY_ADVERTISING_MAX_SIZE];
+
+/* BLE event queue */
 static events::EventQueue event_queue(/* event count */ 16 * EVENTS_EVENT_SIZE);
 
-class HeartrateDemo : ble::Gap::EventHandler {
+/* flags */
+/* DEFINE FLAGS */
+/* COMPLETE HERE */
+
+/****************/
+
+/* Tickers: one for led blinking, another for measurement update */ 
+/* DECLARE TICKERS */
+/* COMPLETE HERE */
+
+/****************/
+
+
+/* LED object (LED1) */
+/* DEFINE LED OBJECT */
+/* COMPLETE HERE */
+
+/****************/
+
+
+/** HANDLERS **/
+
+/* Handler for led Ticker */
+/* WRITE CALLBACK FOR LED TICKER */
+/* COMPLETE HERE */
+
+/****************/
+
+/* Handler for measurement update Ticker */
+/* WRITE CALLBACK FOR MEASUREMENT UPDATE */
+/* COMPLETE HERE */
+
+/****************/
+
+/** Callback triggered when the ble initialization process has finished */
+void on_init_complete(BLE::InitializationCompleteCallbackContext *params) {
+    if (params->error != BLE_ERROR_NONE) {
+        printf("Ble initialization failed.");
+        return;
+    }
+    
+    /* UPDATE INIT COMPLETE FLAG */
+    /* COMPLETE HERE */
+
+    /****************/
+
+}
+
+/* class implementing EventHandler */
+class HeartrateApp : ble::Gap::EventHandler {
 public:
-    HeartrateDemo(BLE &ble, events::EventQueue &event_queue) :
+    HeartrateApp(BLE &ble, events::EventQueue &event_queue) :
         _ble(ble),
         _event_queue(event_queue),
-        _led1(LED1, 1),
-        _connected(false),
-        _hr_uuid(GattService::UUID_HEART_RATE_SERVICE),
-        _hr_counter(100),
-        _hr_service(ble, _hr_counter, HeartRateService::LOCATION_FINGER),
-        _adv_data_builder(_adv_buffer) { }
+        /* Add other initializers to the list:
+           - private flag for connection state to false
+           - heart rate value to 100 (bpm)
+           - battery level to 100 (%)
+           - Heart rate service with proper constructor
+           - Battery service with proper constructor
+           - Device information service with proper constructor */
+        /* COMPLETE HERE */
 
-    void start() {
-        _ble.gap().setEventHandler(this);
-
-        _ble.init(this, &HeartrateDemo::on_init_complete);
-
-        _event_queue.call_every(500, this, &HeartrateDemo::blink);
-        _event_queue.call_every(1000, this, &HeartrateDemo::update_sensor_value);
-
-        _event_queue.dispatch_forever();
-    }
-
-private:
-    /** Callback triggered when the ble initialization process has finished */
-    void on_init_complete(BLE::InitializationCompleteCallbackContext *params) {
-        if (params->error != BLE_ERROR_NONE) {
-            printf("Ble initialization failed.");
-            return;
-        }
-
-        print_mac_address();
-
-        start_advertising();
-    }
-
-    void start_advertising() {
-        /* Create advertising parameters and payload */
-
-        ble::AdvertisingParameters adv_parameters(
-            ble::advertising_type_t::CONNECTABLE_UNDIRECTED,
-            ble::adv_interval_t(ble::millisecond_t(1000))
-        );
-
-        _adv_data_builder.setFlags();
-        _adv_data_builder.setAppearance(ble::adv_data_appearance_t::GENERIC_HEART_RATE_SENSOR);
-        _adv_data_builder.setLocalServiceList(mbed::make_Span(&_hr_uuid, 1));
-        _adv_data_builder.setName(DEVICE_NAME);
-
-        /* Setup advertising */
-
-        ble_error_t error = _ble.gap().setAdvertisingParameters(
-            ble::LEGACY_ADVERTISING_HANDLE,
-            adv_parameters
-        );
-
-        if (error) {
-            printf("_ble.gap().setAdvertisingParameters() failed\r\n");
-            return;
-        }
-
-        error = _ble.gap().setAdvertisingPayload(
-            ble::LEGACY_ADVERTISING_HANDLE,
-            _adv_data_builder.getAdvertisingData()
-        );
-
-        if (error) {
-            printf("_ble.gap().setAdvertisingPayload() failed\r\n");
-            return;
-        }
-
-        /* Start advertising */
-
-        error = _ble.gap().startAdvertising(ble::LEGACY_ADVERTISING_HANDLE);
-
-        if (error) {
-            printf("_ble.gap().startAdvertising() failed\r\n");
-            return;
-        }
-    }
-
+        /****************/
+        {}
+    
     void update_sensor_value() {
         if (_connected) {
-            // Do blocking calls or whatever is necessary for sensor polling.
-            // In our case, we simply update the HRM measurement.
-            _hr_counter++;
+            /* Update Heart Rate measurement (by simulation)
+               the value should be increased by 1 every second 
+               until it reaches 175, then shold drop to 100 and 
+               restart counting.
+               At the end, update value to the BLE Heart rate service */
+            /* COMPLETE HERE */
 
-            //  100 <= HRM bps <=175
-            if (_hr_counter == 175) {
-                _hr_counter = 100;
-            }
-
-            _hr_service.updateHeartRate(_hr_counter);
+            /****************/
         }
-    }
-
-    void blink(void) {
-        _led1 = !_led1;
     }
 
 private:
     /* Event handler */
 
     void onDisconnectionComplete(const ble::DisconnectionCompleteEvent&) {
-        _ble.gap().startAdvertising(ble::LEGACY_ADVERTISING_HANDLE);
-        _connected = false;
+        /* Start advertising */
+        /* COMPLETE HERE */
+
+        /****************/
+        
+        /* Update the private flag of connection state to false */
+        /* COMPLETE HERE */
+
+        /****************/
     }
 
-    virtual void onConnectionComplete(const ble::ConnectionCompleteEvent &event) {
+    void onConnectionComplete(const ble::ConnectionCompleteEvent &event) {
         if (event.getStatus() == BLE_ERROR_NONE) {
-            _connected = true;
+            /* Update the private flag of connection state to true */
+            /* COMPLETE HERE */
+
+            /****************/
         }
     }
 
 private:
     BLE &_ble;
     events::EventQueue &_event_queue;
-    DigitalOut _led1;
 
-    bool _connected;
+    /* define private connection state flag */
+    /* COMPLETE HERE */
 
-    UUID _hr_uuid;
+    /****************/
 
-    uint8_t _hr_counter;
-    HeartRateService _hr_service;
+    /* define heart rate counter variable */
+    /* COMPLETE HERE */
 
-    uint8_t _adv_buffer[ble::LEGACY_ADVERTISING_MAX_SIZE];
-    ble::AdvertisingDataBuilder _adv_data_builder;
+    /****************/
+
+    /* define batery level variable */
+    /* COMPLETE HERE */
+
+    /****************/
+    
+    /* define Services members (HeartRateService, BatteryService, DeviceInformationService) */
+    /* COMPLETE HERE */
+
+    /****************/
 };
 
 /** Schedule processing of events from the BLE middleware in the event queue. */
@@ -160,14 +175,110 @@ void schedule_ble_events(BLE::OnEventsToProcessCallbackContext *context) {
     event_queue.call(Callback<void()>(&context->ble, &BLE::processEvents));
 }
 
+void start_advertising(BLE &ble) {
+
+    /* Create AdvertisingDataBuilder object */
+    /* COMPLETE HERE */
+
+    /****************/
+
+    /* define AdvertisingParameters object
+       with advertising interval to 1 s */
+    /* COMPLETE HERE */
+
+    /****************/
+
+    /* Fill in advertising data 
+      - set Flags (Default) 
+      - set Appearance
+      - set device name
+      - set service list */
+    /* COMPLETE HERE */
+
+    /****************/
+    
+    /* Set advertising parameters*/
+    ble_error_t error = ble.gap().setAdvertisingParameters(
+        ble::LEGACY_ADVERTISING_HANDLE,
+        adv_parameters
+    );
+
+    if (error) {
+        printf("_ble.gap().setAdvertisingParameters() failed\r\n");
+        return;
+    }
+
+    /* set Advertising payload */
+    error = ble.gap().setAdvertisingPayload(
+        ble::LEGACY_ADVERTISING_HANDLE,
+        adv_data_builder.getAdvertisingData()
+    );
+
+    if (error) {
+        printf("_ble.gap().setAdvertisingPayload() failed\r\n");
+        return;
+    }
+
+    /* Start advertising */
+    error = ble.gap().startAdvertising(ble::LEGACY_ADVERTISING_HANDLE);
+
+    if (error) {
+        printf("_ble.gap().startAdvertising() failed\r\n");
+        return;
+    }
+}
+
 int main()
 {
-    BLE &ble = BLE::Instance();
+    /* Access BLE Device instance */
+    /* COMPLETE HERE */
+
+    /****************/
+
+    /* set Callback for BLE stack events */
     ble.onEventsToProcess(schedule_ble_events);
 
-    HeartrateDemo demo(ble, event_queue);
-    demo.start();
+    /* Define EventHandler and attach it to the BLE Device*/
+    /* COMPLETE HERE */
 
+    /****************/
+
+    /* Init BLE Device */
+    /* COMPLETE HERE */
+
+    /****************/
+  
+    /* Main loop */
+    while (1) {
+        /* check flag and take actions */
+        /* - init complete
+        /* COMPLETE HERE */
+        
+        /****************/
+        {
+
+            print_mac_address();
+     
+            start_advertising(ble);
+
+            /* attach callbacks to Tickers */
+            /* COMPLETE HERE */
+        
+            /****************/
+        }
+        /* - led flag */
+        /* COMPLETE HERE */
+        
+        /****************/
+
+        /* - measurement update flag */
+        /* COMPLETE HERE */
+        
+        /****************/
+
+        /* check for BLE events */
+        event_queue.dispatch(100);
+    }
     return 0;
 }
 
